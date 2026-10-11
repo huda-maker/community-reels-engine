@@ -13,7 +13,7 @@ In a hosted coding session that offers network secrets (for example Claude Code 
 
 ## Faceless narration
 
-`python3 reel.py narrate script.txt --out work/<story>/narration.wav --model <tts-model> --voice <voice> [--direction "tone"]` sends only the approved script text (and the optional direction) to a Gemini speech model. Without `--allow-send` it prints the maximum charge and sends nothing. Each speech model needs a current official price entry in `TTS_RATES` in `reelkit/gemini.py`; an unpriced model stops before any request. The reservation counts one token per UTF-8 byte of text and 25 audio tokens per second up to `--max-seconds` (default 60); the default budget is $0.25. Earlier takes are never overwritten. Listen to every word and measure the timing before writing the story plan.
+`python3 reel.py narrate script.txt --out work/<story>/narration.wav --model <tts-model> --voice <voice> [--direction "tone"]` sends only the approved script text (and the optional direction) to a Gemini speech model. Without `--allow-send` it prints the maximum charge and sends nothing. Each speech model needs a current official price entry in `TTS_RATES` in `reelkit/gemini.py`; an unpriced or expired entry stops before any request. `gemini-3.8-flash-tts`, checked 2026-10-11: **$0.50 per million input text tokens and $9.00 per million output audio tokens** (about $0.00225 per 10 s of audio) through 2026-12-31; Google lists $1.00 / $18.00 from 2027-01-01. The reservation counts one token per UTF-8 byte of text and 25 audio tokens per second up to `--max-seconds` (default 60); the default budget is $0.25. Earlier takes are never overwritten. Listen to every word and measure the timing before writing the story plan.
 
 ## Costs you can inspect
 

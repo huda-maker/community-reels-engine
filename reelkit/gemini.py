@@ -16,9 +16,9 @@ API = "https://generativelanguage.googleapis.com"
 RATES = {"gemini-3.1-pro-preview": (2.0, 12.0), "gemini-3.8-flash": (.75, 3.75)}
 DEFAULT_MODEL = "gemini-3.8-flash"
 NETWORK_SECRET = "network-secret"
-# Speech models: (input $/M text tokens, output $/M audio tokens, date checked on Google's pricing page).
-# Empty until a current official price is entered; an unpriced model stops before any request.
-TTS_RATES = {}
+# Speech models: (input $/M text tokens, output $/M audio tokens, date checked, last day the rate applies).
+# Standard paid rates from Google's pricing page; an unpriced or expired entry stops before any request.
+TTS_RATES = {"gemini-3.8-flash-tts": (.50, 9.00, "2026-10-11", "2026-12-31")}
 AUDIO_TOKENS_PER_SECOND = 25
 
 
@@ -186,7 +186,9 @@ def speech_estimate(model, text, max_seconds):
         raise ValueError("This speech model has no verified price entry. Add its current official rate to TTS_RATES before using it.")
     if not 0 < max_seconds <= 300:
         raise ValueError("Set --max-seconds between 1 and 300.")
-    rate_in, rate_out, _checked = TTS_RATES[model]
+    rate_in, rate_out, _checked, until = TTS_RATES[model]
+    if date.today() > date.fromisoformat(until):
+        raise ValueError("The verified speech rate expired. Recheck official pricing and update TTS_RATES before calling.")
     tokens_in = len(text.encode("utf-8"))
     tokens_out = int(max_seconds * AUDIO_TOKENS_PER_SECOND)
     return tokens_in, tokens_out, (tokens_in * rate_in + tokens_out * rate_out) / 1e6
@@ -237,7 +239,7 @@ def speak(text, out, ledger_path, model, voice, direction="", budget=.25, max_se
         usage = response.get("usageMetadata", {})
         rec["usage"] = usage
         if "promptTokenCount" in usage:
-            rate_in, rate_out, _checked = TTS_RATES[model]
+            rate_in, rate_out = TTS_RATES[model][:2]
             rec["accounted_usd"] = (usage["promptTokenCount"] * rate_in + usage.get("candidatesTokenCount", 0) * rate_out) / 1e6
         rec["state"] = "response_received"
         save(ledger_path, ledger)

@@ -148,12 +148,17 @@ class ProviderSafety(unittest.TestCase):
         with patch.dict('os.environ',{'GEMINI_KEY_SOURCE':'somewhere'},clear=True),self.assertRaises(ValueError):gemini.config()
 
 class SpeechSafety(unittest.TestCase):
-    rates={'test-tts':(1.0,20.0,'2026-10-11')}
+    rates={'test-tts':(1.0,20.0,'2026-10-11','2099-12-31')}
 
     def test_unpriced_speech_model_stops_before_network(self):
         with tempfile.TemporaryDirectory() as d,patch.object(gemini,'json_request') as network,self.assertRaises(ValueError):
             gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','unpriced-tts','Kore',allow_send=True)
         network.assert_not_called()
+
+    def test_expired_speech_rate_stops_before_network(self):
+        with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,{'old-tts':(1.0,20.0,'2020-01-01','2020-12-31')}),patch.object(gemini,'json_request') as network:
+            with self.assertRaises(ValueError):gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','old-tts','Kore',allow_send=True)
+            network.assert_not_called()
 
     def test_without_allow_send_only_the_estimate_is_shown(self):
         with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,self.rates),patch.object(gemini,'json_request') as network:
