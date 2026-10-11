@@ -130,6 +130,71 @@ class ProviderSafety(unittest.TestCase):
         with patch.dict('os.environ',{'GEMINI_API_KEY':'fake-test-key','GEMINI_MODEL':'unpriced-model'}):
             with self.assertRaises(ValueError):gemini.config()
 
+    def test_network_secret_mode_reads_and_sends_no_key(self):
+        with patch.dict('os.environ',{'GEMINI_KEY_SOURCE':'network-secret'},clear=True),patch.object(gemini,'ROOT',Path(tempfile.mkdtemp())):
+            key,model=gemini.config()
+        self.assertIsNone(key)
+        sent={}
+        class Opener:
+            def open(self,req,timeout):
+                sent.update({k.lower():v for k,v in req.header_items()})
+                raise gemini.urllib.error.HTTPError(req.full_url,403,'test',{},None)
+        with patch.object(gemini.urllib.request,'build_opener',return_value=Opener()),self.assertRaises(RuntimeError):
+            gemini.request(None,'GET',gemini.API+'/v1beta/models')
+        self.assertNotIn('x-goog-api-key',sent)
+        with self.assertRaises(ValueError):gemini.request(None,'GET','https://example.com/collect')
+
+    def test_unknown_key_source_stops(self):
+        with patch.dict('os.environ',{'GEMINI_KEY_SOURCE':'somewhere'},clear=True),self.assertRaises(ValueError):gemini.config()
+
+class SpeechSafety(unittest.TestCase):
+    rates={'test-tts':(1.0,20.0,'2026-10-11')}
+
+    def test_unpriced_speech_model_stops_before_network(self):
+        with tempfile.TemporaryDirectory() as d,patch.object(gemini,'json_request') as network,self.assertRaises(ValueError):
+            gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','unpriced-tts','Kore',allow_send=True)
+        network.assert_not_called()
+
+    def test_without_allow_send_only_the_estimate_is_shown(self):
+        with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,self.rates),patch.object(gemini,'json_request') as network:
+            with self.assertRaises(ValueError) as stop:gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','test-tts','Kore')
+            network.assert_not_called()
+            self.assertIn('Nothing sent',str(stop.exception))
+            self.assertFalse((Path(d)/'usage.json').exists())
+
+    def test_budget_guard_stops_before_network(self):
+        with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,self.rates),patch.object(gemini,'json_request') as network:
+            save(Path(d)/'usage.json',{'calls':[{'accounted_usd':.249}]})
+            with self.assertRaises(ValueError):gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','test-tts','Kore',allow_send=True)
+            network.assert_not_called()
+
+    def test_speech_is_saved_and_accounted_without_the_key(self):
+        import base64,wave
+        pcm=b'\x00\x00'*24000
+        reply={'candidates':[{'finishReason':'STOP','content':{'parts':[{'inlineData':{'mimeType':'audio/L16;codec=pcm;rate=24000','data':base64.b64encode(pcm).decode()}}]}}],
+               'usageMetadata':{'promptTokenCount':40,'candidatesTokenCount':25}}
+        with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,self.rates),patch.dict('os.environ',{'GEMINI_API_KEY':'fake-test-key'},clear=True),\
+             patch.object(gemini,'ROOT',Path(d)),patch.object(gemini,'json_request',return_value=reply) as network:
+            out=gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','test-tts','Kore',direction='Calm',allow_send=True)
+            with wave.open(str(out)) as w:self.assertEqual(w.getnframes(),24000)
+            body=network.call_args.args[2]
+            self.assertEqual(body['contents'][0]['parts'][0]['text'],'Calm:\nscript')
+            ledger=(Path(d)/'usage.json').read_text()
+            self.assertNotIn('fake-test-key',ledger)
+            call=json.loads(ledger)['calls'][0]
+            self.assertEqual(call['state'],'complete');self.assertEqual(call['audio_seconds'],1.0)
+            self.assertAlmostEqual(call['accounted_usd'],(40*1+25*20)/1e6)
+            self.assertFalse((Path(d)/'usage.lock').exists())
+            with self.assertRaises(ValueError):gemini.speak('script',out,Path(d)/'usage.json','test-tts','Kore',allow_send=True)
+
+    def test_incomplete_speech_keeps_reservation(self):
+        reply={'candidates':[{'finishReason':'MAX_TOKENS','content':{'parts':[]}}]}
+        with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,self.rates),patch.dict('os.environ',{'GEMINI_KEY_SOURCE':'network-secret'},clear=True),\
+             patch.object(gemini,'ROOT',Path(d)),patch.object(gemini,'json_request',return_value=reply):
+            with self.assertRaises(RuntimeError):gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','test-tts','Kore',allow_send=True)
+            self.assertFalse((Path(d)/'n.wav').exists())
+            self.assertEqual(json.loads((Path(d)/'usage.json').read_text())['calls'][0]['state'],'response_received')
+
 
 if __name__=='__main__':unittest.main()
 

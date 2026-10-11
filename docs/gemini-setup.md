@@ -7,6 +7,14 @@
 
 The alternative is a `GEMINI_API_KEY` process environment variable. The tool reads only that environment and this package's own `.env`; there are no hidden links to the author's machine. It uses `gemini-3.8-flash` by default. `gemini-3.1-pro-preview` is an explicit higher-cost option; there is no automatic model switching. Other models require a compatibility check and a current pricing entry in `reelkit/gemini.py`.
 
+## Hosted sessions: a network secret instead of a key file
+
+In a hosted coding session that offers network secrets (for example Claude Code on the web, Pro/Max), store the key there instead of in `.env` or an environment variable: host `generativelanguage.googleapis.com`, header `x-goog-api-key`, no prefix. The session's proxy attaches the key after each request leaves the machine, so the key never exists in the folder, the process or its logs. Run provider commands with `GEMINI_KEY_SOURCE=network-secret`; the tool then reads no key and sends no key header, and still refuses any other host.
+
+## Faceless narration
+
+`python3 reel.py narrate script.txt --out work/<story>/narration.wav --model <tts-model> --voice <voice> [--direction "tone"]` sends only the approved script text (and the optional direction) to a Gemini speech model. Without `--allow-send` it prints the maximum charge and sends nothing. Each speech model needs a current official price entry in `TTS_RATES` in `reelkit/gemini.py`; an unpriced model stops before any request. The reservation counts one token per UTF-8 byte of text and 25 audio tokens per second up to `--max-seconds` (default 60); the default budget is $0.25. Earlier takes are never overwritten. Listen to every word and measure the timing before writing the story plan.
+
 ## Costs you can inspect
 
 Flash's standard paid rate, checked on 2026-09-21: **$0.75 per million input tokens and $3.75 per million output tokens, including thinking**, through 2026-12-31. The tool stops after that rate expiry until its pricing entry is updated. Pro preview's <=200,000-input-token tier is **$2 input / $12 output per million tokens**. Example arithmetic for 20,000 input plus 4,000 output tokens: **$0.03 Flash or $0.088 Pro**. These are calculations, not fixed prices per reel; video tokenization and response length vary. The budget uses paid rates conservatively even when a project is eligible for free-tier usage.

@@ -1,4 +1,5 @@
 """One bounded Gemini request. No key ever enters an HTML file or a command argument."""
+import base64
 import json
 import os
 from datetime import date
@@ -7,12 +8,18 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import wave
 from .core import ROOT, load, save
 
 API = "https://generativelanguage.googleapis.com"
 # Standard <=200k pricing verified 2026-09-21. Unknown models stop, never guess a rate.
 RATES = {"gemini-3.1-pro-preview": (2.0, 12.0), "gemini-3.8-flash": (.75, 3.75)}
 DEFAULT_MODEL = "gemini-3.8-flash"
+NETWORK_SECRET = "network-secret"
+# Speech models: (input $/M text tokens, output $/M audio tokens, date checked on Google's pricing page).
+# Empty until a current official price is entered; an unpriced model stops before any request.
+TTS_RATES = {}
+AUDIO_TOKENS_PER_SECOND = 25
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -20,7 +27,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise RuntimeError("Unexpected provider redirect. Refusing to forward the API key.")
 
 
-def config():
+def settings():
     values = {}
     path = ROOT / ".env"
     if path.exists():
@@ -28,10 +35,27 @@ def config():
             if "=" in line and not line.lstrip().startswith("#"):
                 k, v = line.split("=", 1)
                 values[k.strip()] = v.strip().strip('"').strip("'")
-    values.update({k: os.environ[k] for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL") if os.environ.get(k)})
+    values.update({k: os.environ[k] for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL", "GEMINI_KEY_SOURCE") if os.environ.get(k)})
+    return values
+
+
+def api_key(values):
+    source = values.get("GEMINI_KEY_SOURCE")
+    if source == NETWORK_SECRET:
+        # A hosted agent proxy attaches the key after the request leaves this machine; there is nothing here to read or log.
+        return None
+    if source:
+        raise ValueError(f"Unknown GEMINI_KEY_SOURCE. Use {NETWORK_SECRET} or leave it unset.")
     key = values.get("GEMINI_API_KEY") or values.get("GOOGLE_API_KEY")
     if not key:
-        raise ValueError("No Gemini API key. Run python3 reel.py setup-key, or set GEMINI_API_KEY in your environment.")
+        raise ValueError("No Gemini API key. Run python3 reel.py setup-key, set GEMINI_API_KEY in your environment, "
+                         f"or set GEMINI_KEY_SOURCE={NETWORK_SECRET} when a network secret supplies it.")
+    return key
+
+
+def config():
+    values = settings()
+    key = api_key(values)
     model = values.get("GEMINI_MODEL", DEFAULT_MODEL)
     if model not in RATES:
         raise ValueError("This model has no verified price entry. Update RATES with current official pricing before using it.")
@@ -44,7 +68,7 @@ def request(key, method, url, payload=None, headers=None, timeout=120):
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme != "https" or parsed.hostname != "generativelanguage.googleapis.com":
         raise ValueError("Refusing to send the API key to a different host.")
-    h = {"x-goog-api-key": key}
+    h = {"x-goog-api-key": key} if key else {}
     h.update(headers or {})
     req = urllib.request.Request(url, data=payload, headers=h, method=method)
     try:
@@ -154,3 +178,85 @@ def _analyze(path, prompt, ledger_path, budget=.5, allow_upload=False, max_outpu
                 ledger.setdefault("cleanup_warnings", []).append({"file": info["name"], "note": "Temporary upload deletion was not confirmed; check Google Files API."})
                 save(ledger_path, ledger)
                 print("Warning: deletion of the temporary Google upload was not confirmed.", flush=True)
+
+
+def speech_estimate(model, text, max_seconds):
+    """Worst-case charge before sending: one token per UTF-8 byte in, the capped audio length out."""
+    if model not in TTS_RATES:
+        raise ValueError("This speech model has no verified price entry. Add its current official rate to TTS_RATES before using it.")
+    if not 0 < max_seconds <= 300:
+        raise ValueError("Set --max-seconds between 1 and 300.")
+    rate_in, rate_out, _checked = TTS_RATES[model]
+    tokens_in = len(text.encode("utf-8"))
+    tokens_out = int(max_seconds * AUDIO_TOKENS_PER_SECOND)
+    return tokens_in, tokens_out, (tokens_in * rate_in + tokens_out * rate_out) / 1e6
+
+
+def speak(text, out, ledger_path, model, voice, direction="", budget=.25, max_seconds=60, allow_send=False):
+    """Generate narration for an approved script. Only the direction and script text are sent; nothing else leaves the machine."""
+    text, out, ledger_path = text.strip(), Path(out), Path(ledger_path)
+    if not text:
+        raise ValueError("The script text is empty.")
+    if direction.strip():
+        text = direction.strip() + ":\n" + text
+    if not 0 < budget <= 10:
+        raise ValueError("Set a positive project API budget up to $10.00.")
+    tokens_in, tokens_out, ceiling = speech_estimate(model, text, max_seconds)
+    ledger = load(ledger_path) if ledger_path.exists() else {"calls": [], "price_source": "https://ai.google.dev/gemini-api/docs/pricing"}
+    spent = sum(c.get("accounted_usd", 0) for c in ledger["calls"])
+    if not allow_send:
+        raise ValueError(f"Nothing sent. This would send {len(text)} characters of script text to Google ({model}, voice {voice}) "
+                         f"and reserve at most ${ceiling:.4f}; ${budget-spent:.4f} of the ${budget:.2f} budget remains. "
+                         "Add --allow-send after the creator approves this cost.")
+    if out.exists():
+        raise ValueError("Narration file already exists. Choose a new --out name; earlier takes are never overwritten.")
+    lock = ledger_path.with_suffix(".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise ValueError("Another provider request owns this project's budget. If a process crashed, confirm it stopped before removing api-usage.lock.") from None
+    try:
+        os.close(fd)
+        ledger = load(ledger_path) if ledger_path.exists() else ledger
+        spent = sum(c.get("accounted_usd", 0) for c in ledger["calls"])
+        if spent + ceiling > budget:
+            raise ValueError(f"Budget guard: this request reserves ${ceiling:.4f}; ${budget-spent:.4f} remains.")
+        key = api_key(settings())
+        rec = {"model": model, "kind": "speech", "voice": voice, "output": out.name, "input_tokens_max": tokens_in,
+               "max_output_tokens": tokens_out, "accounted_usd": ceiling, "state": "reserved",
+               "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        ledger["calls"].append(rec)
+        save(ledger_path, ledger)
+        print(f"Gemini speech: one request, maximum estimated charge ${ceiling:.4f}.", flush=True)
+        response = json_request(key, f"/v1beta/models/{model}:generateContent",
+                                {"contents": [{"parts": [{"text": text}]}],
+                                 "generationConfig": {"responseModalities": ["AUDIO"], "maxOutputTokens": tokens_out,
+                                                      "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}}},
+                                timeout=300)
+        usage = response.get("usageMetadata", {})
+        rec["usage"] = usage
+        if "promptTokenCount" in usage:
+            rate_in, rate_out, _checked = TTS_RATES[model]
+            rec["accounted_usd"] = (usage["promptTokenCount"] * rate_in + usage.get("candidatesTokenCount", 0) * rate_out) / 1e6
+        rec["state"] = "response_received"
+        save(ledger_path, ledger)
+        candidate = response.get("candidates", [{}])[0]
+        if candidate.get("finishReason") != "STOP":
+            raise RuntimeError("Gemini returned incomplete speech (possibly the --max-seconds cap). Budget remains recorded; no automatic retry.")
+        part = next((p["inlineData"] for p in candidate.get("content", {}).get("parts", []) if "inlineData" in p), None)
+        if not part:
+            raise RuntimeError("Gemini returned no audio. Budget remains recorded; no automatic retry.")
+        mime = part.get("mimeType", "")
+        rate = int(mime.split("rate=")[1].split(";")[0]) if "rate=" in mime else 24000
+        if "L16" not in mime and "pcm" not in mime.lower():
+            raise RuntimeError("Unexpected audio format from Gemini; nothing saved.")
+        pcm = base64.b64decode(part["data"])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(out), "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(pcm)
+        rec.update(state="complete", audio_seconds=round(len(pcm) / 2 / rate, 3))
+        save(ledger_path, ledger)
+        return out
+    finally:
+        lock.unlink(missing_ok=True)

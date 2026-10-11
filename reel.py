@@ -43,7 +43,7 @@ def doctor(_args):
     if shutil.which("node") and int(run(["node", "--version"], capture=True).strip().lstrip("v").split(".")[0]) < 22:
         problems.append("Node.js 22+")
     print("Python:", sys.version.split()[0])
-    print("Provider key:", "configured" if any(os.environ.get(k) for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY")) or (ROOT/".env").exists() else "not configured (demo still works)")
+    print("Provider key:", "configured" if any(os.environ.get(k) for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_KEY_SOURCE")) or (ROOT/".env").exists() else "not configured (demo still works)")
     if problems:
         raise ValueError("Install missing requirements: " + ", ".join(problems))
     print("Core render browser:", hf("browser", "path", capture=True).strip())
@@ -178,6 +178,13 @@ def dress(args):
     print("Composition ready:",out.name)
 
 
+def narrate(args):
+    out=Path(args.out)
+    gemini.speak(Path(args.script).read_text(encoding="utf-8"),out,out.parent/"api-usage.json",args.model,args.voice,
+                 args.direction,args.budget_usd,args.max_seconds,args.allow_send)
+    print("Narration saved:",out,"— listen to every word and measure the timing before writing the story plan.")
+
+
 def story(args):
     from reelkit.story import prepare_story
     p=prepare_story(args.plan,args.name,args.audio,args.silent)
@@ -304,6 +311,11 @@ def main():
     voice=s.add_mutually_exclusive_group(required=True)
     voice.add_argument("--audio");voice.add_argument("--silent",action="store_true")
     s.set_defaults(func=story)
+    s=commands.add_parser("narrate",help="Gemini reads an approved faceless script aloud (sends only that text)")
+    s.add_argument("script",help="UTF-8 text file holding the approved script");s.add_argument("--out",required=True)
+    s.add_argument("--model",required=True);s.add_argument("--voice",required=True);s.add_argument("--direction",default="")
+    s.add_argument("--budget-usd",type=float,default=.25);s.add_argument("--max-seconds",type=float,default=60)
+    s.add_argument("--allow-send",action="store_true");s.set_defaults(func=narrate)
     for name in ("analyze","decode","review"):
         s=commands.add_parser(name,help={"analyze":"Gemini understands a raw recording","decode":"Gemini explains a reference's style","review":"Gemini reviews the finished video"}[name])
         s.add_argument("name");s.add_argument("--allow-upload",action="store_true");s.add_argument("--budget-usd",type=float,default=.5)
