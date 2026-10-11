@@ -251,28 +251,32 @@ def speak(text, out, ledger_path, model, voice, direction="", budget=.25, max_se
             raise RuntimeError(f"Gemini returned no audio (finish reason {finish}). Budget remains recorded; no automatic retry.")
         mime = rec["mime_type"] = part.get("mimeType", "")
         audio = base64.b64decode(part["data"])
+        is_wav = mime.lower().split(";")[0] in ("audio/wav", "audio/x-wav", "audio/wave") and audio[:4] == b"RIFF" and audio[8:12] == b"WAVE"
         pcm = "l16" in mime.lower() or "pcm" in mime.lower()
         rate = int(mime.split("rate=")[1].split(";")[0]) if "rate=" in mime else 24000
         target = out
-        if finish != "STOP" or not pcm:
+        if finish != "STOP" or not (pcm or is_wav):
             # Paid audio is kept for inspection under a separate name, never silently dropped or treated as a usable take.
-            target = out.with_name(out.stem + ".unchecked" + (".wav" if pcm else ".bin"))
+            ext = ".wav" if pcm or is_wav else ".bin"
+            target = out.with_name(out.stem + ".unchecked" + ext)
             n = 2
             while target.exists():
-                target = out.with_name(f"{out.stem}.unchecked-{n}" + (".wav" if pcm else ".bin")); n += 1
+                target = out.with_name(f"{out.stem}.unchecked-{n}" + ext); n += 1
             rec["kept_for_inspection"] = target.name
         out.parent.mkdir(parents=True, exist_ok=True)
         if pcm:
             with wave.open(str(target), "wb") as w:
                 w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(audio)
-            rec["audio_seconds"] = round(len(audio) / 2 / rate, 3)
         else:
             target.write_bytes(audio)
+        if pcm or is_wav:
+            with wave.open(str(target), "rb") as w:
+                rec["audio_seconds"] = round(w.getnframes() / w.getframerate(), 3)
         save(ledger_path, ledger)
         if finish != "STOP":
             raise RuntimeError(f"Gemini returned incomplete speech (finish reason {finish}; possibly the --max-seconds cap). "
                                f"Partial audio kept as {target.name}. Budget remains recorded; no automatic retry.")
-        if not pcm:
+        if not (pcm or is_wav):
             raise RuntimeError(f"Unexpected audio format from Gemini ({mime or 'none given'}). Raw audio kept as {target.name}. Budget remains recorded.")
         rec["state"] = "complete"
         save(ledger_path, ledger)

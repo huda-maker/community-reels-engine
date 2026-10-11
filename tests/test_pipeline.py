@@ -192,6 +192,18 @@ class SpeechSafety(unittest.TestCase):
             self.assertFalse((Path(d)/'usage.lock').exists())
             with self.assertRaises(ValueError):gemini.speak('script',out,Path(d)/'usage.json','test-tts','Kore',allow_send=True)
 
+    def test_wav_container_is_saved_as_is(self):
+        import base64,io,wave
+        buf=io.BytesIO()
+        with wave.open(buf,'wb') as w:w.setnchannels(1);w.setsampwidth(2);w.setframerate(24000);w.writeframes(b'\x00\x00'*12000)
+        reply={'candidates':[{'finishReason':'STOP','content':{'parts':[{'inlineData':{'mimeType':'audio/wav','data':base64.b64encode(buf.getvalue()).decode()}}]}}]}
+        with tempfile.TemporaryDirectory() as d,patch.dict(gemini.TTS_RATES,self.rates),patch.dict('os.environ',{'GEMINI_KEY_SOURCE':'network-secret'},clear=True),\
+             patch.object(gemini,'ROOT',Path(d)),patch.object(gemini,'json_request',return_value=reply):
+            out=gemini.speak('script',Path(d)/'n.wav',Path(d)/'usage.json','test-tts','Kore',allow_send=True)
+            self.assertEqual(out.read_bytes(),buf.getvalue())
+            call=json.loads((Path(d)/'usage.json').read_text())['calls'][0]
+            self.assertEqual((call['state'],call['audio_seconds']),('complete',.5))
+
     def test_incomplete_or_unknown_audio_is_kept_not_used(self):
         import base64
         for finish,mime,kept in (('MAX_TOKENS','audio/L16;codec=pcm;rate=24000','n.unchecked.wav'),('STOP','audio/ogg','n.unchecked.bin')):
