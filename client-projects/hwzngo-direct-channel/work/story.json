@@ -1,0 +1,113 @@
+{
+ "audience": "أصحاب المطاعم والكافيهات ومتخذو القرار فيها",
+ "script": "عندك مطعم؟ سؤال سريع: عملائك، فعلًا عملائك؟ إذا طلباتك كلها تجيك من تطبيق توصيل غيرِك، فإنت تدفع عمولة على كل طلب، والعميل يرجع للتطبيق، مو لك. مع هوزن قو، يصير لمطعمك تطبيق طلبات باسمك وهويتك، والطلب يوصلك مباشرة. وتكافئ عملائك بنقاط ولاء وكاشباك، يخليهم يرجعون لك إنت. خل عميلك عميلك.",
+ "script_approved_by": "Huda (creator) — approved in chat 2026-10-11, incl. her pronunciation edits and the shortened ending",
+ "voice_source": "Gemini TTS gemini-3.8-flash-tts, voice Charon, take 4 (creator-approved), padded with 3.72 s silence for the end card",
+ "duration": 30.0,
+ "timing_verified": true,
+ "timing_verified_by": "Assistant: phrase boundaries measured from the waveform (10 ms RMS, -40 dB pauses); creator to confirm by playback",
+ "captions": [
+  {
+   "start": 0.19,
+   "end": 1.97,
+   "text": "عندك مطعم؟ سؤال سريع:",
+   "direction": "rtl"
+  },
+  {
+   "start": 2.45,
+   "end": 4.49,
+   "text": "عملائك، فعلًا عملائك؟",
+   "direction": "rtl"
+  },
+  {
+   "start": 5.38,
+   "end": 7.87,
+   "text": "إذا طلباتك كلها تجيك من تطبيق توصيل غيرِك،",
+   "direction": "rtl"
+  },
+  {
+   "start": 8.1,
+   "end": 10.17,
+   "text": "فإنت تدفع عمولة على كل طلب،",
+   "direction": "rtl"
+  },
+  {
+   "start": 10.44,
+   "end": 12.54,
+   "text": "والعميل يرجع للتطبيق، مو لك.",
+   "direction": "rtl"
+  },
+  {
+   "start": 13.08,
+   "end": 17.57,
+   "text": "مع هوزن قو، يصير لمطعمك تطبيق طلبات باسمك وهويتك،",
+   "direction": "rtl"
+  },
+  {
+   "start": 17.88,
+   "end": 19.13,
+   "text": "والطلب يوصلك مباشرة.",
+   "direction": "rtl"
+  },
+  {
+   "start": 19.61,
+   "end": 23.77,
+   "text": "وتكافئ عملائك بنقاط ولاء وكاشباك، يخليهم يرجعون لك إنت.",
+   "direction": "rtl"
+  },
+  {
+   "start": 24.37,
+   "end": 25.96,
+   "text": "خل عميلك عميلك.",
+   "direction": "rtl"
+  }
+ ],
+ "elements": [
+  {
+   "start": 0,
+   "end": 5.0,
+   "kind": "statement",
+   "label": "سؤال",
+   "title": "عملائك… فعلًا عملائك؟",
+   "body": ""
+  },
+  {
+   "start": 5.0,
+   "end": 12.8,
+   "kind": "flow",
+   "label": "المشكلة",
+   "title": "كل طلب يمر عبر تطبيق غيرك",
+   "items": [
+    "مطعمك",
+    "تطبيق التوصيل (عمولة)",
+    "العميل"
+   ]
+  },
+  {
+   "start": 12.8,
+   "end": 19.4,
+   "kind": "asset",
+   "label": "الحل",
+   "title": "تطبيق طلبات باسم مطعمك",
+   "path": "assets/app-home-dawwar-alsaada.jpg",
+   "source": "لقطة حقيقية من تطبيق دوّار السعادة المبني على هوزن قو — قدمتها هدى؛ إذن العرض قيد التأكيد"
+  },
+  {
+   "start": 19.4,
+   "end": 24.1,
+   "kind": "asset",
+   "label": "الولاء",
+   "title": "نقاط ولاء وكاشباك",
+   "path": "assets/app-loyalty-points-light.jpg",
+   "source": "لقطة حقيقية من تطبيق على هوزن قو — قدمتها هدى"
+  },
+  {
+   "start": 24.1,
+   "end": 30.0,
+   "kind": "statement",
+   "label": "تواصل معنا",
+   "title": "خل عميلك عميلك",
+   "body": "واتساب 920033443"
+  }
+ ]
+}

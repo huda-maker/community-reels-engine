@@ -1,0 +1,191 @@
+{
+  "calls": [
+    {
+      "model": "gemini-3.8-flash-tts",
+      "kind": "speech",
+      "voice": "Charon",
+      "output": "narration-Charon.wav",
+      "input_tokens_max": 872,
+      "max_output_tokens": 1125,
+      "accounted_usd": 0.009328,
+      "state": "response_received",
+      "started": "2026-10-11T01:44:02Z",
+      "usage": {
+        "promptTokenCount": 188,
+        "candidatesTokenCount": 1026,
+        "totalTokenCount": 1214,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 188
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 1026
+          }
+        ],
+        "serviceTier": "standard"
+      }
+    },
+    {
+      "model": "gemini-3.8-flash-tts",
+      "kind": "speech",
+      "voice": "Orus",
+      "output": "narration-Orus.wav",
+      "input_tokens_max": 872,
+      "max_output_tokens": 1125,
+      "accounted_usd": 0.01021,
+      "state": "response_received",
+      "started": "2026-10-11T01:44:15Z",
+      "usage": {
+        "promptTokenCount": 188,
+        "candidatesTokenCount": 1124,
+        "totalTokenCount": 1312,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 188
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 1124
+          }
+        ],
+        "serviceTier": "standard"
+      }
+    },
+    {
+      "model": "gemini-3.8-flash-tts",
+      "kind": "speech",
+      "voice": "Charon",
+      "output": "narration-Charon-2.wav",
+      "input_tokens_max": 947,
+      "max_output_tokens": 1500,
+      "accounted_usd": 0.009706,
+      "state": "response_received",
+      "started": "2026-10-11T01:45:47Z",
+      "usage": {
+        "promptTokenCount": 206,
+        "candidatesTokenCount": 1067,
+        "totalTokenCount": 1273,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 206
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 1067
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reason": "STOP",
+      "mime_type": "audio/wav",
+      "kept_for_inspection": "narration-Charon-2.unchecked.bin"
+    },
+    {
+      "model": "gemini-3.8-flash-tts",
+      "kind": "speech",
+      "voice": "Orus",
+      "output": "narration-Orus-2.wav",
+      "input_tokens_max": 947,
+      "max_output_tokens": 1500,
+      "accounted_usd": 0.009553,
+      "state": "response_received",
+      "started": "2026-10-11T01:46:02Z",
+      "usage": {
+        "promptTokenCount": 206,
+        "candidatesTokenCount": 1050,
+        "totalTokenCount": 1256,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 206
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 1050
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reason": "STOP",
+      "mime_type": "audio/wav",
+      "kept_for_inspection": "narration-Orus-2.unchecked.bin"
+    },
+    {
+      "model": "gemini-3.8-flash-tts",
+      "kind": "speech",
+      "voice": "Charon",
+      "output": "narration-Charon-3.wav",
+      "input_tokens_max": 1213,
+      "max_output_tokens": 1500,
+      "accounted_usd": 0.006428,
+      "state": "complete",
+      "started": "2026-10-11T01:54:28Z",
+      "usage": {
+        "promptTokenCount": 274,
+        "candidatesTokenCount": 699,
+        "totalTokenCount": 973,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 274
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 699
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reason": "STOP",
+      "mime_type": "audio/wav",
+      "audio_seconds": 27.96
+    },
+    {
+      "model": "gemini-3.8-flash-tts",
+      "kind": "speech",
+      "voice": "Charon",
+      "output": "narration-Charon-4.wav",
+      "input_tokens_max": 1366,
+      "max_output_tokens": 1500,
+      "accounted_usd": 0.006074,
+      "state": "complete",
+      "started": "2026-10-11T02:00:17Z",
+      "usage": {
+        "promptTokenCount": 322,
+        "candidatesTokenCount": 657,
+        "totalTokenCount": 979,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 322
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "AUDIO",
+            "tokenCount": 657
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reason": "STOP",
+      "mime_type": "audio/wav",
+      "audio_seconds": 26.28
+    }
+  ],
+  "price_source": "https://ai.google.dev/gemini-api/docs/pricing"
+}

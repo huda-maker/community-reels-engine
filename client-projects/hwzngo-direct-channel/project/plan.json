@@ -1,0 +1,16 @@
+{
+  "mode": "faceless story",
+  "source_audio": {
+    "type": "Gemini TTS gemini-3.8-flash-tts, voice Charon, take 4 (creator-approved), padded with 3.72 s silence for the end card",
+    "file": "narration-source.wav",
+    "sha256": "b1c43deb092e4fd6d90bf576cb247e4c381a690f1111f1dc43c28ab4fd290dd6"
+  },
+  "script_approved_by": "Huda (creator) — approved in chat 2026-10-11, incl. her pronunciation edits and the shortened ending",
+  "keep": [
+    {
+      "start": 0,
+      "end": 30.0,
+      "reason": "Approved story; playback still needs review"
+    }
+  ]
+}
