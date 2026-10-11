@@ -244,20 +244,37 @@ def speak(text, out, ledger_path, model, voice, direction="", budget=.25, max_se
         rec["state"] = "response_received"
         save(ledger_path, ledger)
         candidate = response.get("candidates", [{}])[0]
-        if candidate.get("finishReason") != "STOP":
-            raise RuntimeError("Gemini returned incomplete speech (possibly the --max-seconds cap). Budget remains recorded; no automatic retry.")
+        finish = rec["finish_reason"] = candidate.get("finishReason")
         part = next((p["inlineData"] for p in candidate.get("content", {}).get("parts", []) if "inlineData" in p), None)
         if not part:
-            raise RuntimeError("Gemini returned no audio. Budget remains recorded; no automatic retry.")
-        mime = part.get("mimeType", "")
+            save(ledger_path, ledger)
+            raise RuntimeError(f"Gemini returned no audio (finish reason {finish}). Budget remains recorded; no automatic retry.")
+        mime = rec["mime_type"] = part.get("mimeType", "")
+        audio = base64.b64decode(part["data"])
+        pcm = "l16" in mime.lower() or "pcm" in mime.lower()
         rate = int(mime.split("rate=")[1].split(";")[0]) if "rate=" in mime else 24000
-        if "L16" not in mime and "pcm" not in mime.lower():
-            raise RuntimeError("Unexpected audio format from Gemini; nothing saved.")
-        pcm = base64.b64decode(part["data"])
+        target = out
+        if finish != "STOP" or not pcm:
+            # Paid audio is kept for inspection under a separate name, never silently dropped or treated as a usable take.
+            target = out.with_name(out.stem + ".unchecked" + (".wav" if pcm else ".bin"))
+            n = 2
+            while target.exists():
+                target = out.with_name(f"{out.stem}.unchecked-{n}" + (".wav" if pcm else ".bin")); n += 1
+            rec["kept_for_inspection"] = target.name
         out.parent.mkdir(parents=True, exist_ok=True)
-        with wave.open(str(out), "wb") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(pcm)
-        rec.update(state="complete", audio_seconds=round(len(pcm) / 2 / rate, 3))
+        if pcm:
+            with wave.open(str(target), "wb") as w:
+                w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate); w.writeframes(audio)
+            rec["audio_seconds"] = round(len(audio) / 2 / rate, 3)
+        else:
+            target.write_bytes(audio)
+        save(ledger_path, ledger)
+        if finish != "STOP":
+            raise RuntimeError(f"Gemini returned incomplete speech (finish reason {finish}; possibly the --max-seconds cap). "
+                               f"Partial audio kept as {target.name}. Budget remains recorded; no automatic retry.")
+        if not pcm:
+            raise RuntimeError(f"Unexpected audio format from Gemini ({mime or 'none given'}). Raw audio kept as {target.name}. Budget remains recorded.")
+        rec["state"] = "complete"
         save(ledger_path, ledger)
         return out
     finally:
