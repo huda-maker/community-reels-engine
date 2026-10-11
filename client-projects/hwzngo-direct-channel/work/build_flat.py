@@ -246,7 +246,7 @@ sfx("whoosh", 27.8, .7); sfx("pop", 28.2, .8); sfx("ding", 28.4, .9)
 OUT.mkdir(exist_ok=True)
 (OUT / "assets").mkdir(exist_ok=True)
 for f in ("gsap.min.js", "GSAP-LICENSE.txt", "Cairo.ttf", "CAIRO-OFL.txt", "hwzngo-logo.png", "app-loyalty-points-light.jpg", "app-wallet-light.jpg"):
-    if (SRC / f).exists():
+    if (SRC / f).exists() and (SRC / f).resolve() != (OUT / "assets" / f).resolve():
         shutil.copy2(SRC / f, OUT / "assets" / f)
 lamps = "".join(f'<div class="lamp" style="left:{x}px"></div>' for x in (190, 540, 890))
 doc = f'''<!doctype html><html lang="ar"><head><meta charset="utf-8"><title>hwzngo-direct-channel · flat</title><script src="assets/gsap.min.js"></script><style>{css}</style></head>
